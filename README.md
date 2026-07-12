@@ -38,7 +38,6 @@ iPod Touch 1st Generation
 
 ### Features
 
-
 ```
 - Firmware Restore / Upgrade
 - Jailbreak (checkra1n)
@@ -47,20 +46,38 @@ iPod Touch 1st Generation
 
 ### Install
 
-UBUNTU LIVE USB USERS WILL NEED TO ENABLE SOFTWARE REPOS IN SOFTWARE & UPDATES
-
-![img](https://i.imgur.com/05scg8J.png)
-
+#### Debian / Ubuntu
 
 ```
 sudo apt install git
-git clone https://github.com/exploit-development/iOS-Hacktivation-Toolkit.git
+git clone https://github.com/0n1cOn3/iOS-Hacktivation-Toolkit.git
 cd iOS-Hacktivation-Toolkit/
 chmod +x hacktivation.sh
 sudo ./hacktivation.sh
 ```
 
-Tested on Debian 10 and Ubuntu 20.04
+#### Fedora / RHEL / AlmaLinux / Rocky Linux
+
+```
+sudo dnf install git
+git clone https://github.com/0n1cOn3/iOS-Hacktivation-Toolkit.git
+cd iOS-Hacktivation-Toolkit/
+chmod +x hacktivation.sh
+sudo ./hacktivation.sh
+```
+
+The script auto-detects your distribution and installs the correct packages.
+
+### Tested On
+
+- Debian 10
+- Ubuntu 20.04
+- Fedora 43
+
+### Notes
+
+- **checkra1n** is downloaded as a static binary on non-Debian distros (the checkra1n APT repo is Debian-only)
+- All libimobiledevice components are built from source on every distro
+- Python 3 is required (Python 2 support dropped)
 
 Looking for developers! This is a work in progress. If you think you can add to this project please get in touch!
-
