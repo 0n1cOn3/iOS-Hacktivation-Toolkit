@@ -1,0 +1,45 @@
+# Cloned build dependencies (from hacktivation.sh "Complete Installation")
+libplist/
+libimobiledevice-glue/
+libusbmuxd/
+libimobiledevice/
+usbmuxd/
+libirecovery/
+idevicerestore/
+libideviceactivation/
+
+# Build artifacts
+*.o
+*.lo
+*.la
+*.a
+*.so
+*.so.[0-9]*
+.deps/
+.libs/
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.*
+configure
+configure~
+stamp-h1
+libtool
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Logs and temp files
+*.log
+*.lock
+
+# IPSW downloads
+*.ipsw
+*.ipsw.lock
+
+# Editor
+*~
+.*.swp
+.vscode/
+.idea/
