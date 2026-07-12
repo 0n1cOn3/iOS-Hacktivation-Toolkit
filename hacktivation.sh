@@ -204,18 +204,57 @@ clone_if_missing() {
     fi
 }
 
+# Spinner characters for build animation
+SPINNER_FRAMES=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+
+# run_silent_with_spinner <label> <command...>
+# Executes a long-running command while displaying a spinner animation.
+# stdout/stderr go to /tmp/build-<pid>.log; on failure the log is dumped.
+run_silent_with_spinner() {
+    local label="$1"; shift
+    local log="/tmp/hacktivation-build-$$.log"
+    local pid
+
+    echo -en "  $YELLOW$label...$NC"
+    "$@" >"$log" 2>&1 &
+    pid=$!
+
+    local i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        echo -en "\r  $YELLOW$label... ${SPINNER_FRAMES[$((i % ${#SPINNER_FRAMES[@]}))]}$NC"
+        i=$((i + 1))
+        sleep 0.15
+    done
+
+    wait "$pid"
+    local rc=$?
+
+    if [ $rc -eq 0 ]; then
+        echo -e "\r  $GREEN$label... ✓$NC"
+    else
+        echo -e "\r  $RED$label... ✗ (exit $rc)$NC"
+        echo -e "  ${RED}--- build log ---$NC"
+        tail -30 "$log" 2>/dev/null
+        echo -e "  ${RED}--- end log ---$NC"
+    fi
+
+    rm -f "$log" 2>/dev/null
+    return $rc
+}
+
 # build_and_install <dir> <configure-flags...>
 # Runs autogen.sh with the given flags, then make and sudo make install.
 # Runs sudo ldconfig afterwards so subsequent builds pick up the new library.
+# Build output is suppressed and shown only on failure.
 # Aborts the whole script on failure instead of cascading into wrong dirs.
 build_and_install() {
     local dir="$1"; shift
     local flags="$*"
-    echo -e "$YELLOW ► Building $dir ($flags)$NC"
+    echo -e "$YELLOW ► Building $dir$NC"
     cd "$SCRIPT_DIR/$dir" || { echo "$RED Cannot cd into $dir$NC"; exit 1; }
-    ./autogen.sh $flags || { echo "$RED autogen.sh failed for $dir$NC"; exit 1; }
-    make || { echo "$RED make failed for $dir$NC"; exit 1; }
-    sudo make install || { echo "$RED make install failed for $dir$NC"; exit 1; }
+    run_silent_with_spinner "  autogen" ./autogen.sh $flags || { echo "$RED autogen.sh failed for $dir$NC"; exit 1; }
+    run_silent_with_spinner "  make" make || { echo "$RED make failed for $dir$NC"; exit 1; }
+    run_silent_with_spinner "  install" sudo make install || { echo "$RED make install failed for $dir$NC"; exit 1; }
     sudo ldconfig
     cd "$SCRIPT_DIR"
 }
@@ -239,9 +278,9 @@ build_and_install libirecovery
 build_and_install idevicerestore
 # libideviceactivation uses plain make + make install (no autogen flags needed)
 cd "$SCRIPT_DIR/libideviceactivation" || { echo "$RED Cannot cd into libideviceactivation$NC"; exit 1; }
-./autogen.sh || { echo "$RED autogen.sh failed for libideviceactivation$NC"; exit 1; }
-make || { echo "$RED make failed for libideviceactivation$NC"; exit 1; }
-sudo make install || { echo "$RED make install failed for libideviceactivation$NC"; exit 1; }
+run_silent_with_spinner "  autogen" ./autogen.sh || { echo "$RED autogen.sh failed for libideviceactivation$NC"; exit 1; }
+run_silent_with_spinner "  make" make || { echo "$RED make failed for libideviceactivation$NC"; exit 1; }
+run_silent_with_spinner "  install" sudo make install || { echo "$RED make install failed for libideviceactivation$NC"; exit 1; }
 sudo ldconfig
 cd "$SCRIPT_DIR"
 
