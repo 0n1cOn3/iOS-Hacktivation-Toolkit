@@ -186,25 +186,64 @@ echo -e "$YELLOW Building libimobiledevice stack from source...$NC"
 
 cd "$SCRIPT_DIR"
 
-git clone https://github.com/libimobiledevice/libirecovery
-git clone https://github.com/libimobiledevice/libideviceactivation.git
-git clone https://github.com/libimobiledevice/idevicerestore
-git clone https://github.com/libimobiledevice/libimobiledevice-glue
-git clone https://github.com/libimobiledevice/usbmuxd
-git clone https://github.com/libimobiledevice/libimobiledevice
-git clone https://github.com/libimobiledevice/libusbmuxd
-git clone https://github.com/libimobiledevice/libplist
-git clone https://github.com/rcg4u/iphonessh.git
-cd ./libplist && ./autogen.sh --without-cython && sudo make install && cd ..
-cd ./libimobiledevice-glue && ./autogen.sh && sudo make install && cd ..
-cd ./libusbmuxd && ./autogen.sh && sudo make install && cd ..
-cd ./libimobiledevice && ./autogen.sh --without-cython && sudo make install && cd ..
-cd ./usbmuxd && ./autogen.sh && sudo make install && cd ..
-cd ./libirecovery && ./autogen.sh && sudo make install && cd ..
-cd ./idevicerestore && ./autogen.sh && sudo make install && cd ..
-cd ./libideviceactivation/ && ./autogen.sh && sudo make && sudo make install && cd ..
+# Ensure freshly-built libraries take precedence over system packages.
+# libplist 2.7.0+ is required (plist_new_unix_date used by libimobiledevice).
+# Without this, the linker may pick up an older system libplist and break
+# the build of libimobiledevice with "undefined reference to plist_new_unix_date".
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
+# Each clone is skipped if the directory already exists (re-runnability).
+clone_if_missing() {
+    local repo="$1"
+    local name="$(basename "$repo" .git)"
+    if [ -d "$SCRIPT_DIR/$name" ]; then
+        echo "  → $name already present, skipping clone"
+    else
+        git clone "$repo" || { echo "$RED Failed to clone $repo$NC"; return 1; }
+    fi
+}
+
+# build_and_install <dir> <configure-flags...>
+# Runs autogen.sh with the given flags, then make and sudo make install.
+# Runs sudo ldconfig afterwards so subsequent builds pick up the new library.
+# Aborts the whole script on failure instead of cascading into wrong dirs.
+build_and_install() {
+    local dir="$1"; shift
+    local flags="$*"
+    echo -e "$YELLOW ► Building $dir ($flags)$NC"
+    cd "$SCRIPT_DIR/$dir" || { echo "$RED Cannot cd into $dir$NC"; exit 1; }
+    ./autogen.sh $flags || { echo "$RED autogen.sh failed for $dir$NC"; exit 1; }
+    make || { echo "$RED make failed for $dir$NC"; exit 1; }
+    sudo make install || { echo "$RED make install failed for $dir$NC"; exit 1; }
+    sudo ldconfig
+    cd "$SCRIPT_DIR"
+}
+
+clone_if_missing https://github.com/libimobiledevice/libirecovery
+clone_if_missing https://github.com/libimobiledevice/libideviceactivation.git
+clone_if_missing https://github.com/libimobiledevice/idevicerestore
+clone_if_missing https://github.com/libimobiledevice/libimobiledevice-glue
+clone_if_missing https://github.com/libimobiledevice/usbmuxd
+clone_if_missing https://github.com/libimobiledevice/libimobiledevice
+clone_if_missing https://github.com/libimobiledevice/libusbmuxd
+clone_if_missing https://github.com/libimobiledevice/libplist
+clone_if_missing https://github.com/rcg4u/iphonessh.git
+
+build_and_install libplist --without-cython
+build_and_install libimobiledevice-glue
+build_and_install libusbmuxd
+build_and_install libimobiledevice --without-cython
+build_and_install usbmuxd
+build_and_install libirecovery
+build_and_install idevicerestore
+# libideviceactivation uses plain make + make install (no autogen flags needed)
+cd "$SCRIPT_DIR/libideviceactivation" || { echo "$RED Cannot cd into libideviceactivation$NC"; exit 1; }
+./autogen.sh || { echo "$RED autogen.sh failed for libideviceactivation$NC"; exit 1; }
+make || { echo "$RED make failed for libideviceactivation$NC"; exit 1; }
+sudo make install || { echo "$RED make install failed for libideviceactivation$NC"; exit 1; }
 sudo ldconfig
+cd "$SCRIPT_DIR"
 
 continueOrExit
 
